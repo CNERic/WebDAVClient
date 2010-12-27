@@ -1,0 +1,7 @@
+.NET Webdav Client Library
+==========================
+
+Hope to use it to make a simple FS for Dokan,
+
+the reason? Webdav support for windows 7 isn't great.
+
