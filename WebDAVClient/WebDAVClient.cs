@@ -28,6 +28,8 @@ namespace net.kvdb.webdav
     public delegate void DownloadCompleteDel(int statusCode);
     public delegate void CreateDirCompleteDel(int statusCode);
     public delegate void DeleteCompleteDel(int statusCode);
+    public delegate void MoveCompleteDel(int statusCode);
+    public delegate void CopyCompleteDel(int statusCode);
 
     public class WebDAVClient
     {
@@ -36,6 +38,8 @@ namespace net.kvdb.webdav
         public event DownloadCompleteDel DownloadComplete;
         public event CreateDirCompleteDel CreateDirComplete;
         public event DeleteCompleteDel DeleteComplete;
+        public event MoveCompleteDel MoveComplete;
+        public event CopyCompleteDel CopyComplete;
 
         //XXX: submit along with state object.
         HttpWebRequest httpWebRequest;
@@ -173,7 +177,8 @@ namespace net.kvdb.webdav
 
         void FinishList(IAsyncResult result)
         {
-            string remoteFilePath = (string)result.AsyncState;
+            RequestState rs = (RequestState)result.AsyncState;
+            string remoteFilePath = (string)rs.userState;
             int statusCode = 0;
             List<String> files = new List<string>();
 
@@ -240,8 +245,9 @@ namespace net.kvdb.webdav
         void FinishUpload(IAsyncResult result)
         {
             int statusCode = 0;
+            RequestState rs = (RequestState)result.AsyncState;
 
-            using (HttpWebResponse response = (HttpWebResponse)httpWebRequest.EndGetResponse(result))
+            using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
             {
                 statusCode = (int)response.StatusCode;
             }
@@ -271,10 +277,13 @@ namespace net.kvdb.webdav
 
         void FinishDownload(IAsyncResult result)
         {
-            string localFilePath = (string)result.AsyncState;
+            
             int statusCode = 0;
 
-            using (HttpWebResponse response = (HttpWebResponse)httpWebRequest.EndGetResponse(result))
+            RequestState rs = (RequestState)result.AsyncState;
+            string localFilePath = rs.localFilePath;
+
+            using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
             {
                 statusCode = (int)response.StatusCode;
                 int contentLength = int.Parse(response.GetResponseHeader("Content-Length"));
@@ -320,7 +329,9 @@ namespace net.kvdb.webdav
         {
             int statusCode = 0;
 
-            using (HttpWebResponse response = (HttpWebResponse)httpWebRequest.EndGetResponse(result))
+            RequestState rs = (RequestState)result.AsyncState;
+
+            using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
             {
                 statusCode = (int)response.StatusCode;
             }
@@ -331,6 +342,70 @@ namespace net.kvdb.webdav
             }
         }
 
+        /// <summary>
+        /// Move a directory on the server
+        /// </summary>
+        /// <param name="remotePath">Origin path of the file on the server</param>
+        /// <param name="remoteDestination">Destination path of the directory on the server</param>
+        public void Move(String remotePath, String remoteDestination)
+        {
+            Uri remoteUri = getServerUrl(remotePath, remotePath.EndsWith("/"));
+            Uri remoteDestinationUri = getServerUrl(remoteDestination, remoteDestination.EndsWith("/"));
+
+            AsyncCallback callback = new AsyncCallback(FinishMove);
+            IDictionary<String, String> headers = new Dictionary<String, String>();
+            headers["Destination"] = remoteDestinationUri.AbsolutePath;
+            HTTPRequest(remoteUri, "MOVE", headers, null, null, callback, null);
+        }
+
+        void FinishMove(IAsyncResult result)
+        {
+            int statusCode = 0;
+
+            RequestState rs = (RequestState)result.AsyncState;
+
+            using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
+            {
+                statusCode = (int)response.StatusCode;
+            }
+
+            if (MoveComplete != null)
+            {
+                MoveComplete(statusCode);
+            }
+        }
+
+        /// <summary>
+        /// Copy a directory on the server
+        /// </summary>
+        /// <param name="remotePath">Origin path of the file on the server</param>
+        /// <param name="remoteDestination">Destination path of the directory on the server</param>
+        public void Copy(String remotePath, String remoteDestination)
+        {
+            Uri remoteUri = getServerUrl(remotePath, remotePath.EndsWith("/"));
+            Uri remoteDestinationUri = getServerUrl(remoteDestination, remoteDestination.EndsWith("/"));
+
+            AsyncCallback callback = new AsyncCallback(FinishCopy);
+            IDictionary<String, String> headers = new Dictionary<String, String>();
+            headers["Destination"] = remoteDestinationUri.AbsolutePath;
+            HTTPRequest(remoteUri, "COPY", headers, null, null, callback, null);
+        }
+
+        void FinishCopy(IAsyncResult result)
+        {
+            int statusCode = 0;
+            RequestState rs = (RequestState)result.AsyncState;
+
+            using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
+            {
+                statusCode = (int)response.StatusCode;
+            }
+
+            if (CopyComplete != null)
+            {
+                CopyComplete(statusCode);
+            }
+        }
 
         /// <summary>
         /// Delete a file on the server
@@ -349,7 +424,9 @@ namespace net.kvdb.webdav
         {
             int statusCode = 0;
 
-            using (HttpWebResponse response = (HttpWebResponse)httpWebRequest.EndGetResponse(result))
+            RequestState rs = (RequestState)result.AsyncState;
+
+            using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
             {
                 statusCode = (int)response.StatusCode;
             }
@@ -368,6 +445,7 @@ namespace net.kvdb.webdav
         /// </summary>
         public class RequestState
         {
+            public String localFilePath;
             public WebRequest request;
             // The request either contains actual content...
             public byte[] content;
@@ -463,6 +541,13 @@ namespace net.kvdb.webdav
             else
             {
 
+                
+                RequestState asyncState = new RequestState();
+                asyncState.request = httpWebRequest;
+                asyncState.localFilePath = (string)state;
+                state = asyncState;
+                
+
                 // Begin async communications
                 httpWebRequest.BeginGetResponse(callback, state);
             }
@@ -504,7 +589,7 @@ namespace net.kvdb.webdav
             }
 
             // Done, invoke user callback
-            request.BeginGetResponse(state.userCallback, state.userState);
+            request.BeginGetResponse(state.userCallback, state);
         }
         #endregion
     }

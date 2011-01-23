@@ -44,6 +44,7 @@ namespace TestWebDAVClient
 
             // Generate unique string to test with.
             string basepath = Path.GetRandomFileName() + '/';
+            string copypath = basepath + "copy/";
             string tempFilePath = Path.GetTempFileName();
             string uploadTestFilePath = @"c:\windows\notepad.exe";
             //string uploadTestFilePath = @"c:\windows\explorer.exe";
@@ -53,12 +54,14 @@ namespace TestWebDAVClient
             c.CreateDirComplete += new CreateDirCompleteDel(c_CreateDirComplete);
             c.CreateDir(basepath);
             autoResetEvent.WaitOne();
+            c.CreateDir(copypath);
+            autoResetEvent.WaitOne();
             Debug.WriteLine("CreateDir passed");
 
             c.ListComplete += new ListCompleteDel(c_ListComplete);
             c.List(basepath);
             autoResetEvent.WaitOne();
-            if (_files.Count != 0) { return false; }
+            if (_files.Count != 1) { return false; }
             Debug.WriteLine("List passed");
 
             c.UploadComplete += new UploadCompleteDel(c_UploadComplete);
@@ -67,7 +70,7 @@ namespace TestWebDAVClient
             Debug.WriteLine("Upload 1/2 passed");
             c.List(basepath);
             autoResetEvent.WaitOne();
-            if (_files.Count != 1) { return false; }
+            if (_files.Count != 2) { return false; }
             Debug.WriteLine("Upload 2/2 passed");
 
             autoResetEvent = new AutoResetEvent(false);
@@ -92,17 +95,24 @@ namespace TestWebDAVClient
             }
             Debug.WriteLine("Download 2/2 passed");
 
+            c.CopyComplete += new CopyCompleteDel(c_CopyComplete);
+            c.Copy(basepath + uploadTestFileName, copypath + uploadTestFileName);
+            autoResetEvent.WaitOne();
             c.DeleteComplete += new DeleteCompleteDel(c_DeleteComplete);
             c.Delete(basepath + uploadTestFileName);
+            autoResetEvent.WaitOne();
+            c.Delete(copypath + uploadTestFileName);
+            autoResetEvent.WaitOne();
+            c.Delete(copypath);
             autoResetEvent.WaitOne();
             Debug.WriteLine("Delete 1/2 passed");
 
             c.List(basepath);
             autoResetEvent.WaitOne();
             if (_files.Count != 0) { return false; }
-            Debug.WriteLine("Delete 2/2 passed");
-
             c.Delete(basepath);
+            autoResetEvent.WaitOne();
+            Debug.WriteLine("Delete 2/2 passed");
 
             return true;
         }
@@ -136,6 +146,12 @@ namespace TestWebDAVClient
         static void c_DownloadComplete(int code)
         {
             Debug.Assert(code == 200);
+            autoResetEvent.Set();
+        }
+
+        static void c_CopyComplete(int code)
+        {
+            Debug.Assert(code == 201);
             autoResetEvent.Set();
         }
     }
