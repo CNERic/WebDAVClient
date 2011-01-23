@@ -14,48 +14,16 @@ namespace TestWebDAVClient
         {
             Debug.Listeners.Add(new ConsoleTraceListener());
             Boolean result;
-
-            // A private mod_dav WebDAV server running on Apache (All tests pass)
-            // No authentication required
-            WebDAVClient c = new WebDAVClient();
-            c.Server = "http://dev.kvdb.net";
-            c.BasePath = "/openshare";
-            result = RunWebDAVTests(c);
+            WebDAVClient c;
 
             // A private mod_dav WebDAV server running on Apache (All tests pass)
             // Basic authentication required
             c = new WebDAVClient();
-            c.User = "admin";
-            c.Pass = "webdavclientadmin";
-            c.Server = "http://dev.kvdb.net";
-            c.BasePath = "/basicshare";
-            result = result && RunWebDAVTests(c);
-
-            // A private mod_dav WebDAV server running on Apache (All tests pass)
-            // Digest authentication required
-            c = new WebDAVClient();
-            c.User = "admin";
-            c.Pass = "webdavclientadmin";
-            c.Domain = "webdav";
-            c.Server = "http://dev.kvdb.net";
-            c.BasePath = "/digestshare";
-            result = result && RunWebDAVTests(c);
-            
-            // A public WebDAV server for testing purposes. (All tests pass)
-            // http://www.maxum.com/Rumpus/TestRumpus.html
-            c = new WebDAVClient();
-            c.Server = "http://www.testrumpus.com/";
-            c.User = "moe";
-            c.Pass = "moe";
-            result = result && RunWebDAVTests(c);
-
-            /*
-            // A public WebDAV server for testing purposes. (Doesn't work with this client yet)
-            // Running lighttpd 1.4.22
-            c = new WebDAVClient();
-            c.Server = "http://webdav.schlitt.info/";
-            result = result && RunWebDAVTests(c);
-             */
+            c.User = "iamedu";
+            c.Pass = "iamedu";
+            c.Server = "http://192.168.1.106:8080";
+            c.BasePath = "/jnstorage/webdav/repo1/javanes/iamedu/";
+            result = RunWebDAVTests(c);
 
             if (!result)
             {
@@ -110,11 +78,11 @@ namespace TestWebDAVClient
             HashAlgorithm h = HashAlgorithm.Create("SHA1");
             byte[] localhash;
             byte[] remotehash;
-            using (FileStream fs = new FileStream(uploadTestFilePath, FileMode.Open))
+            using (FileStream fs = new FileStream(uploadTestFilePath, FileMode.Open, FileAccess.Read))
             {
                 localhash = h.ComputeHash(fs);
             }
-            using (FileStream fs = new FileStream(tempFilePath, FileMode.Open))
+            using (FileStream fs = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
             {
                 remotehash = h.ComputeHash(fs);
             }
@@ -133,6 +101,8 @@ namespace TestWebDAVClient
             autoResetEvent.WaitOne();
             if (_files.Count != 0) { return false; }
             Debug.WriteLine("Delete 2/2 passed");
+
+            c.Delete(basepath);
 
             return true;
         }

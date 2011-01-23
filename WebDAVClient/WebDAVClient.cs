@@ -497,6 +497,7 @@ namespace net.kvdb.webdav
                             streamResponse.Write(content, 0, bytesRead);
                         } while (bytesRead > 0);
 
+                        fs.Close();
                         //XXX: perform upload status callback
                     }
                 }
