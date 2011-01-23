@@ -98,8 +98,11 @@ namespace TestWebDAVClient
             c.CopyComplete += new CopyCompleteDel(c_CopyComplete);
             c.Copy(basepath + uploadTestFileName, copypath + uploadTestFileName);
             autoResetEvent.WaitOne();
+            c.MoveComplete += new MoveCompleteDel(c_MoveComplete);
+            c.Move(basepath + uploadTestFileName, basepath + "moved" + uploadTestFileName);
+            autoResetEvent.WaitOne();
             c.DeleteComplete += new DeleteCompleteDel(c_DeleteComplete);
-            c.Delete(basepath + uploadTestFileName);
+            c.Delete(basepath + "moved" + uploadTestFileName);
             autoResetEvent.WaitOne();
             c.Delete(copypath + uploadTestFileName);
             autoResetEvent.WaitOne();
@@ -115,6 +118,12 @@ namespace TestWebDAVClient
             Debug.WriteLine("Delete 2/2 passed");
 
             return true;
+        }
+
+        static void c_MoveComplete(int statusCode)
+        {
+            Debug.Assert(statusCode == 201);
+            autoResetEvent.Set();
         }
 
         static void c_DeleteComplete(int statusCode)
