@@ -21,7 +21,7 @@ namespace TestWebDAVClient
             c = new WebDAVClient();
             c.User = "iamedu";
             c.Pass = "iamedu";
-            c.Server = "http://192.168.1.106:8080";
+            c.Server = "http://192.168.1.55:8080";
             c.BasePath = "/jnstorage/webdav/repo1/javanes/iamedu/";
             result = RunWebDAVTests(c);
 
@@ -76,6 +76,8 @@ namespace TestWebDAVClient
             autoResetEvent = new AutoResetEvent(false);
             c.DownloadComplete += new DownloadCompleteDel(c_DownloadComplete);
             c.Download(basepath + uploadTestFileName, tempFilePath);
+            autoResetEvent.WaitOne();
+            c.Download(basepath, @"c:\Users\iamedu\test");
             autoResetEvent.WaitOne();
             Debug.WriteLine("Download 1/2 passed");
             HashAlgorithm h = HashAlgorithm.Create("SHA1");

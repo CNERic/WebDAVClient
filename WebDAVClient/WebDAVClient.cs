@@ -286,18 +286,28 @@ namespace net.kvdb.webdav
             using (HttpWebResponse response = (HttpWebResponse)rs.request.EndGetResponse(result))
             {
                 statusCode = (int)response.StatusCode;
-                int contentLength = int.Parse(response.GetResponseHeader("Content-Length"));
-                using (Stream s = response.GetResponseStream())
+                try
                 {
-                    using (FileStream fs = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
+                    int contentLength = int.Parse(response.GetResponseHeader("Content-Length"));
+                    using (Stream s = response.GetResponseStream())
                     {
-                        byte[] content = new byte[4096];
-                        int bytesRead = 0;
-                        do
+                        using (FileStream fs = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
                         {
-                            bytesRead = s.Read(content, 0, content.Length);
-                            fs.Write(content, 0, bytesRead);
-                        } while (bytesRead > 0);
+                            byte[] content = new byte[4096];
+                            int bytesRead = 0;
+                            do
+                            {
+                                bytesRead = s.Read(content, 0, content.Length);
+                                fs.Write(content, 0, bytesRead);
+                            } while (bytesRead > 0);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (DownloadComplete != null)
+                    {
+                        DownloadComplete(-1);
                     }
                 }
             }
